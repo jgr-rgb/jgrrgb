@@ -5,6 +5,7 @@ using LaTeXStrings
 using SymbolicUtils
 using Kronecker
 
+# This can be used to possibly provide other options for formating the output
 #sympy.interactive.printing.init_printing(use_unicode=False, wrap_line=False)
 
 
@@ -19,14 +20,17 @@ function sympDiag(coV)
     
     Ω = Ω1⊗idN
     B = 1im*V*Ω
+
     #latexify(B,render=true)
-    P,D = B.diagonalize() #This does not return the eigenvalues in the order that we need
-    latexify(D,render=true)
-    latexify(P,render=true)
+    #P,D = B.diagonalize() #This does not return the eigenvalues in the order that we need
+    #latexify(D,render=true)
+    #latexify(P,render=true)
     
+    #latexify(P*Ω*transpose(P),render=true)
+
     # This will calculate the eigenvalues and eigenvectors, placing them in a data structure
     mat = B.eigenvects()
-    #print(mat)
+    print(mat)
 
     # Extracting the symplectic eigenvectors from the data structure and normalizing
     P = zeros(1,length(mat))
@@ -37,12 +41,15 @@ function sympDiag(coV)
                 evec = mat[i][3]
                 evec = evec[1]
                 
+                
                 #Normalizing
                 j = 0
                 for ii in collect(1:length(evec))
                     j = j + abs(evec[ii])^2
                 end
                 evec = (1/sqrt(j))*evec
+                
+
                 P = evec
             else
                 for jj in collect(1:length(mat[i][3]))
@@ -51,22 +58,28 @@ function sympDiag(coV)
                         evec = mat[i][3]
                         evec = evec[jj]
                         
+                        
                         #Normalizing
                         j = 0
                         for ii in collect(1:length(evec))
                             j = j + abs(evec[ii])^2
                         end
                         evec = (1/sqrt(j))*evec
+                        
+
                         P = evec
                     else
                         evec = mat[i][3]
                         evec = evec[jj]
 
+                        
+                        #Normalizing
                         j = 0
                         for tt in collect(1:length(evec))
                             j = j + abs(evec[tt])^2
                         end
                         evec = (1/sqrt(j))*evec
+                        
 
                         P = [P evec]
                     end
@@ -77,12 +90,14 @@ function sympDiag(coV)
                 evec = mat[i][3]
                 evec = evec[1]
                 
+                
                 #Normalizing
                 j = 0
                 for tt in collect(1:length(evec))
                     j = j + abs(evec[tt])^2
                 end
                 evec = (1/sqrt(j))*evec
+                
 
                 P = [P evec]
             else
@@ -92,20 +107,21 @@ function sympDiag(coV)
                     #print(evec)
                     #print(jj)
 
+                    
                     #Normalizing
                     j = 0
                     for tt in collect(1:length(evec))
                         j = j + abs(evec[tt])^2
                     end
                     evec = (1/sqrt(j))*evec
-                    #print(evec)
+
                     P = [P evec]
                     
                 end
             end
         end
     end
-
+    
     # Collecting the symplectic eigenvalues in a julia vector
     D = []
     for i in collect(1:length(mat))
@@ -120,7 +136,7 @@ function sympDiag(coV)
         end
     end
     
-    #Now, getting the order that they need to be in for getting our desired answer
+    #Now, matching the positive and negative eigenvectors, so the output is an array with each location of the pairs in the D matrix
     di = []
     for i = collect(1:length(D))
         b = i+1
@@ -130,10 +146,18 @@ function sympDiag(coV)
                     append!(di,[i j])
                     break
                 else
+                    if j in di
+                        print("")
+                    else
+                        append!(di,[i j])
+                        break 
+                    end
+                    #=
                     if j != last(di)
                         append!(di,[i j])
                         break
                     end
+                    =#
                 end
             end
         end
@@ -148,14 +172,20 @@ function sympDiag(coV)
         P = [P.col(di[1] - 1) P.col(di[2] - 1)]
     elseif length(di) == 4
         mDD = sympy.diag(D[di[1]],D[di[3]],D[di[2]],D[di[4]])
-        P = [P.col(di[1] - 1) P.col(di[3] - 1) P.col(di[2] - 1) P.col(di[4] - 1)]
+        #P = [P.col(di[1] - 1) P.col(di[3] - 1) P.col(di[2] - 1) P.col(di[4] - 1)]
+        P = [P.col(di[2] - 1) P.col(di[4] - 1) P.col(di[1] - 1) P.col(di[3] - 1)]
+    elseif length(di) == 6
+        #mDD = sympy.diag(D[di[1]],D[di[4]],D[di[5]],D[di[2]],D[di[4]],D[di[6]])
+        mDD = sympy.diag(D[di[1]],D[di[3]],D[di[5]],D[di[2]],D[di[4]],D[di[6]])
+        #P = [P.col(di[1] - 1) P.col(di[3] - 1) P.col(di[2] - 1) P.col(di[4] - 1)]
+        P = [P.col(di[1] - 1) P.col(di[3] - 1) P.col(di[5] - 1) P.col(di[2] - 1) P.col(di[4] - 1) P.col(di[6] - 1)]
     end
 
     #print(D[di[2]])
     latexify(mDD,render=true)
     latexify(P,render=true)
     #latexify(P*mDD*inv(P),render=true)
-    #latexify(transpose(P)*Ω*P,render=true)
+    latexify(P*Ω*transpose(P),render=true)
 
     #=
     sz = size(D)
@@ -175,27 +205,29 @@ function sympDiag(coV)
         DD = sympy.diag(D1[di[2]],D1[di[2]])
     elseif length(di) == 4
         DD = sympy.diag(D1[di[2]],D1[di[4]],D1[di[2]],D1[di[4]])
+    elseif length(di) == 6
+        DD = sympy.diag(D1[di[2]],D1[di[4]],D1[di[6]],D1[di[2]],D1[di[4]],D1[di[6]])
     end
-    
+
     # Can be used to check the result
     #latexify(DD,render=true)
     #latexify(P,render=true)
 
     # Now calculating our S matrix
     U2 = (1/sqrt(2))*[1 1; 1im -1im ]
-    U2T = (1/sqrt(2))*[1 -1im; 1 1im ] #Shouldnt this be the transpose conjugate? 
+    U2T = (1/sqrt(2))*[1 -1im; 1 1im] # Transpose conjugate of U2
     S = P*(U2T⊗idN)
+    
     #We can verify our S matrix is actually symplectic
-    # S*Ω*transpose(S)
+    print(S*Ω*transpose(S))
 
     # Finally, calculating our covariance matrix to confirm our results
     Vf = S*DD*transpose(S)
     Vf = sympy.simplify(Vf) #Using sympy to simplify our expression
     
     # I have found that this exports it to the terminal in the nicest form, even though the latex makes no sense
-    sympy.latex(Vf)
+    #sympy.latex(Vf)
     latexify(Vf,render=true)
-
 
 end
 
@@ -203,13 +235,18 @@ end
 @vars λ γ
 
 # Covariance matrix for a displaced vacuum state, in the end we just need to replace λ with 1
-#V = (1/2)*[λ 0;0 λ]
+V = (1/2)*[λ 0;0 λ]
 
 # Covariance matrix for a Single mode thermal state
 #V = (1/2)*[(1 + λ^2)/(1 - λ^2) 0 0 0; 0 (1 + λ^2)/(1 - λ^2) 0 0; 0 0 (1 + λ^2)/(1 - λ^2) 0; 0 0 0 (1 + λ^2)/(1 - λ^2)]
 
 # Covariance matrix for a 2 mode thermal state
 #V = (1/2)*[(1 + λ^2)/(1 - λ^2) 0 0 0; 0 (1 + γ^2)/(1 - γ^2) 0 0; 0 0 (1 + λ^2)/(1 - λ^2) 0; 0 0 0 (1 + γ^2)/(1 - γ^2)]
+
+# Finally, we can test for 3 modes, or n = 3
+#V = (1/2)*[(1 + λ^2)/(1 - λ^2) 0 0 0 0 0; 0 (1 + λ^2)/(1 - λ^2) 0 0 0 0; 0 0 (1 + λ^2)/(1 - λ^2) 0 0 0; 0 0 0 (1 + λ^2)/(1 - λ^2) 0 0; 0 0 0 0 (1 + λ^2)/(1 - λ^2) 0; 0 0 0 0 0 (1 + λ^2)/(1 - λ^2)]
+#V = (1/2)*[λ 0 0 0 0 0; 0 λ 0 0 0 0; 0 0 λ 0 0 0; 0 0 0 λ 0 0; 0 0 0 0 λ 0; 0 0 0 0 0 λ]
+
 
 # Now, using our function to perform the symplectic diagonalization
 sympDiag(V)
